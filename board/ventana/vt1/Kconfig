@@ -1,0 +1,110 @@
+if TARGET_VENTANA_VT1
+
+config SYS_BOARD
+	default "vt1"
+
+config SYS_VENDOR
+	default "ventana"
+
+config SYS_CPU
+	default "generic"
+
+config SYS_CONFIG_NAME
+	default "ventana-vt1"
+
+config SYS_DRAM_BASE
+	hex "DRAM base address"
+	default 0x80000000
+	help
+	  Set DRAM base address.
+
+config TEXT_BASE
+	hex "Text base address"
+	default 0x80200000
+	help
+	  Set text base address.
+
+config SPL_TEXT_BASE
+	hex "SPL text base address"
+	default 0x84000000
+	help
+	  Set SPL text base address.
+
+config SPL_OPENSBI_LOAD_ADDR
+	hex "OpenSBI load address"
+	default 0x87000000
+	help
+	  Set OpenSBI load address
+
+config ENV_KERNEL_ADDR_R
+	hex "Default value of kernel_addr_r"
+	default 0x90000000
+	help
+	  Set default value of kernel_addr_r environment variable
+
+config ENV_FDT_ADDR_R
+	hex "Default value of fdt_addr_r"
+	default 0x94000000
+	help
+	  Set default value of fdt_addr_r environment variable
+
+config ENV_SCRIPTADDR
+	hex "Default value of scriptaddr"
+	default 0x94100000
+	help
+	  Set default value of scriptaddr environment variable
+
+config ENV_PXEFILE_ADDR_R
+	hex "Default value of pxefile_addr_r"
+	default 0x94200000
+	help
+	  Set default value of pxefile_addr_r environment variable
+
+config ENV_RAMDISK_ADDR_R
+	hex "Default value of ramdisk_addr_r"
+	default 0x95000000
+	help
+	  Set default value of ramdisk_addr_r environment variable
+
+config BOARD_SPECIFIC_OPTIONS # dummy
+	def_bool y
+	select GENERIC_RISCV
+	select SUPPORT_SPL
+	imply AHCI
+	imply SMP
+	imply BOARD_LATE_INIT
+	imply PCI_INIT_R
+	imply SPL_RAM_SUPPORT
+	imply SPL_RAM_DEVICE
+	imply CMD_PCI
+	imply CMD_POWEROFF
+	imply CMD_SCSI
+	imply CMD_PING
+	imply CMD_EXT2
+	imply CMD_EXT4
+	imply CMD_FAT
+	imply CMD_FS_GENERIC
+	imply DOS_PARTITION
+	imply ISO_PARTITION
+	imply EFI_PARTITION
+	imply SCSI_AHCI
+	imply AHCI_PCI
+	imply E1000
+	imply NVME
+	imply NVME_PCI
+	imply PCI
+	imply PCIE_ECAM_GENERIC
+	imply SCSI
+	imply DM_SCSI
+	imply SYS_NS16550
+	imply HTIF_CONSOLE if 64BIT
+	imply SYSRESET
+	imply SYSRESET_CMD_POWEROFF
+	imply VIRTIO_MMIO
+	imply VIRTIO_PCI
+	imply VIRTIO_NET
+	imply VIRTIO_BLK
+	imply MTD_NOR_FLASH
+	imply CFI_FLASH
+
+endif

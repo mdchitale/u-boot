@@ -1,0 +1,7 @@
+Ventana 'VT1' BOARD
+M:	Mayuresh Chitale <mchitale@ventanamicro.com>
+M:	Anup Patel <apatel@ventanamicro.com>
+S:	Maintained
+F:	board/ventana/vt1/
+F:	include/configs/ventana-vt1.h
+F:	configs/ventana-vt1_defconfig
