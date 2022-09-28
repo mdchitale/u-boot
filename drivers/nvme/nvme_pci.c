@@ -39,6 +39,7 @@ U_BOOT_DRIVER(nvme) = {
 	.bind	= nvme_bind,
 	.probe	= nvme_probe,
 	.priv_auto	= sizeof(struct nvme_dev),
+	.flags	= DM_FLAG_PRE_RELOC,
 };
 
 struct pci_device_id nvme_supported[] = {

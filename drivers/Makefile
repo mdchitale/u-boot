@@ -34,6 +34,7 @@ obj-$(CONFIG_$(SPL_)DM_MAILBOX) += mailbox/
 obj-$(CONFIG_$(SPL_)REMOTEPROC) += remoteproc/
 obj-$(CONFIG_$(SPL_)SYSINFO) += sysinfo/
 obj-$(CONFIG_$(SPL_TPL_)TPM) += tpm/
+obj-$(CONFIG_$(SPL_)NVME) += nvme/
 obj-$(CONFIG_XEN) += xen/
 obj-$(CONFIG_$(SPL_)FPGA) += fpga/
 
@@ -86,7 +87,6 @@ obj-y += crypto/
 obj-$(CONFIG_FASTBOOT) += fastboot/
 obj-y += misc/
 obj-$(CONFIG_MMC) += mmc/
-obj-$(CONFIG_NVME) += nvme/
 obj-$(CONFIG_PCI_ENDPOINT) += pci_endpoint/
 obj-y += dfu/
 obj-$(CONFIG_PCH) += pch/
