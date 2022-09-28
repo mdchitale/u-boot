@@ -72,7 +72,7 @@ int board_late_init(void)
 u32 spl_boot_device(void)
 {
 	/* RISC-V QEMU only supports RAM as SPL boot device */
-	return BOOT_DEVICE_RAM;
+	return BOOT_DEVICE_NVME;
 }
 #endif
 
