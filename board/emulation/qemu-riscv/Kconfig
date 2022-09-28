@@ -33,9 +33,12 @@ config BOARD_SPECIFIC_OPTIONS # dummy
 	imply SMP
 	imply BOARD_LATE_INIT
 	imply PCI_INIT_R
-	imply SPL_RAM_SUPPORT
-	imply SPL_RAM_DEVICE
 	imply CMD_PCI
+	imply SPL_NVME
+	imply SPL_PCI
+	imply SPL_PCI_PNP
+	imply SPL_FS_FAT
+	imply SPL_NVME_PCI
 	imply CMD_POWEROFF
 	imply CMD_SBI
 	imply CMD_SCSI
