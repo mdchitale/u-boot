@@ -80,6 +80,42 @@ struct disk_partition {
 #endif
 };
 
+/**
+ * get_part_uuid() - get partition UUID
+ *
+ * @a:		disk partition as struct disk_partition
+ * Return:	partition UUID as string
+ */
+#if CONFIG_IS_ENABLED(PARTITION_UUIDS)
+#define get_part_uuid(a) (a.uuid)
+#else
+#define get_part_uuid(a) ("")
+#endif
+
+/**
+ * get_part_type_guid() - get partition type GUID
+ *
+ * @a:		disk partition as struct disk_partition
+ * Return:	partition type GUID as string
+ */
+#ifdef CONFIG_PARTITION_TYPE_GUID
+#define get_part_type_guid(a) (a.type_guid)
+#else
+#define get_part_type_guid(a) ("")
+#endif
+
+/**
+ * get_part_type() - get partition type
+ *
+ * @a:		disk partition as struct disk_partition
+ * Return:	partition type a unsigned char
+ */
+#ifdef CONFIG_DOS_PARTITION
+#define get_part_type(a) (a.sys_ind)
+#else
+#define get_part_type(a) ('\0')
+#endif
+
 struct disk_part {
 	int partnum;
 	struct disk_partition gpt_part_info;
