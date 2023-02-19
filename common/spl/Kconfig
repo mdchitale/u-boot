@@ -515,19 +515,36 @@ config SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION
 	  used in raw mode
 
 config SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION_TYPE
-	bool "MMC raw mode: by partition type"
+	bool "MMC raw mode: by MBR partition type"
 	depends on DOS_PARTITION && SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION
 	help
-	  Use partition type for specifying U-Boot partition on MMC/SD in
+	  Use MBR partition type for specifying U-Boot partition on MMC/SD in
 	  raw mode. U-Boot will be loaded from the first partition of this
 	  type to be found.
 
 config SYS_MMCSD_RAW_MODE_U_BOOT_PARTITION_TYPE
-	hex "Partition Type on the MMC to load U-Boot from"
+	hex "MBR Partition Type on the MMC to load U-Boot from"
 	depends on SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION_TYPE
 	help
-	  Partition Type on the MMC to load U-Boot from, when the MMC is being
-	  used in raw mode.
+	  MBR Partition Type on the MMC to load U-Boot from, when the MMC is
+	  being used in raw mode.
+
+config SYS_MMCSD_RAW_MODE_U_BOOT_USE_GPT_PARTITION_TYPE
+	bool "MMC raw mode: by GPT partition type"
+	depends on PARTITION_TYPE_GUID && SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION
+	help
+	  Use GPT partition type for specifying U-Boot partition on MMC/SD in
+	  raw mode. U-Boot will be loaded from the first partition of this
+	  type to be found.
+
+config SYS_MMCSD_RAW_MODE_U_BOOT_GPT_PARTITION_TYPE
+	string "GPT Partition Type on the MMC to load U-Boot from"
+	depends on SYS_MMCSD_RAW_MODE_U_BOOT_USE_GPT_PARTITION_TYPE
+	default d2f002f8-e4e7-4269-b8ac-3bb6fabeaff6
+	help
+	  GPT Partition Type on the MMC to load U-Boot from, when the MMC is
+	  being used in raw mode. The GUID must be lower case, low endian,
+	  and formatted like d2f002f8-e4e7-4269-b8ac-3bb6fabeaff6.
 
 config SUPPORT_EMMC_BOOT_OVERRIDE_PART_CONFIG
 	bool "Override eMMC EXT_CSC_PART_CONFIG by user defined partition"
