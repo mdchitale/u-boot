@@ -116,6 +116,24 @@ static int mmc_load_image_raw_partition(struct spl_image_info *spl_image,
 	struct disk_partition info;
 	int err;
 
+	if (IS_ENABLED(CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_GPT_PARTITION_TYPE)) {
+		const char *guid =
+			IF_ENABLED(CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_GPT_PARTITION_TYPE,
+				   CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_GPT_PARTITION_TYPE,
+				   "");
+
+		for (int i = 1; i <= MAX_SEARCH_PARTITIONS; ++i) {
+			err = part_get_info(mmc_get_blk_desc(mmc), i, &info);
+			if (err)
+				continue;
+			if (!strncmp(get_part_type_guid(info), guid,
+				     UUID_STR_LEN)) {
+				partition = i;
+				break;
+			}
+		}
+	}
+
 #ifdef CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_USE_PARTITION_TYPE
 	int type_part;
 	/* Only support MBR so DOS_ENTRY_NUMBERS */
