@@ -29,6 +29,13 @@
 #define IS_ENABLED(option)	config_enabled(option, 0)
 
 /*
+ * IF_ENABLED(CONFIG_FOO, opt_cfg, def_val) evalutes to opt_cfg if
+ * CONFIG_FOO is set to 'y' and to def_val otherwise.
+ */
+#define IF_ENABLED(option, opt_cfg, def_val) \
+	config_opt_enabled(IS_ENABLED(option), opt_cfg, def_val)
+
+/*
  * U-Boot add-on: Helper macros to reference to different macros (prefixed by
  * CONFIG_, CONFIG_SPL_, CONFIG_TPL_ or CONFIG_TOOLS_), depending on the build
  * context.
