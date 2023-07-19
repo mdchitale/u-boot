@@ -468,9 +468,11 @@ int blk_get_device_part_str(const char *ifname, const char *dev_part_str,
 #endif
 
 	/* If no dev_part_str, use bootdevice environment variable */
+#if CONFIG_IS_ENABLED(ENV_SUPPORT)
 	if (!dev_part_str || !strlen(dev_part_str) ||
 	    !strcmp(dev_part_str, "-"))
 		dev_part_str = env_get("bootdevice");
+#endif
 
 	/* If still no dev_part_str, it's an error */
 	if (!dev_part_str) {
