@@ -10,10 +10,18 @@
 #include <init.h>
 #include <nvme.h>
 
+int __weak spl_nvme_boot_devpart(int *dev, int *part)
+{
+	*dev = CONFIG_SPL_NVME_BOOT_DEVICE;
+	*part = CONFIG_SYS_NVME_BOOT_PARTITION;
+
+	return 0;
+}
+
 static int spl_nvme_load_image(struct spl_image_info *spl_image,
 			       struct spl_boot_device *bootdev)
 {
-	int ret;
+	int ret, dev = -1, part = -1;
 
 	ret = pci_init();
 	if (ret < 0)
@@ -23,9 +31,11 @@ static int spl_nvme_load_image(struct spl_image_info *spl_image,
 	if (ret < 0)
 		return ret;
 
-	ret = spl_blk_load_image(spl_image, bootdev, UCLASS_NVME,
-				 CONFIG_SPL_NVME_BOOT_DEVICE,
-				 CONFIG_SYS_NVME_BOOT_PARTITION);
+	ret = spl_nvme_boot_devpart(&dev, &part);
+	if (ret < 0)
+		return ret;
+
+	ret = spl_blk_load_image(spl_image, bootdev, UCLASS_NVME, dev, part);
 	return ret;
 }
 

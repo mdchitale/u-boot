@@ -464,6 +464,17 @@ int default_spl_mmc_emmc_boot_partition(struct mmc *mmc);
  */
 int spl_mmc_emmc_boot_partition(struct mmc *mmc);
 
+/**
+ * spl_nvme_boot_devpart() - Get device and partition to fetch the payload from.
+ *
+ * This function should return the NVMe boot device and partition number from
+ * which the SPL should fetch the payload.
+ *
+ * If not overridden by the platform, it is weakly defined in
+ * common/spl/spl_nvme.c and returns the default config values.
+ */
+int spl_nvme_boot_devpart(int *dev, int *part);
+
 void spl_set_bd(void);
 
 /**
