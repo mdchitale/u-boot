@@ -50,10 +50,21 @@ int board_late_init(void)
 }
 
 #ifdef CONFIG_SPL
-u32 spl_boot_device(void)
+void board_boot_order(u32 *spl_boot_list)
 {
-	/* RISC-V QEMU only supports RAM as SPL boot device */
-	return BOOT_DEVICE_RAM;
+	int index = 0;
+
+	if (IS_ENABLED(CONFIG_SPL_NVME))
+		spl_boot_list[index++] = BOOT_DEVICE_NVME;
+	if (IS_ENABLED(CONFIG_SPL_SATA))
+		spl_boot_list[index++] = BOOT_DEVICE_SATA;
+	if (IS_ENABLED(CONFIG_SPL_USB_STORAGE))
+		spl_boot_list[index++] = BOOT_DEVICE_USB;
+	if (IS_ENABLED(CONFIG_SPL_SEMIHOSTING))
+		spl_boot_list[index++] = BOOT_DEVICE_SMH;
+	/* RAM last as CONFIG_SPL_RAW_IMAGE_SUPPORT=y may lead to crash */
+	if (IS_ENABLED(CONFIG_SPL_RAM_SUPPORT))
+		spl_boot_list[index++] = BOOT_DEVICE_RAM;
 }
 #endif
 
