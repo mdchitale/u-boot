@@ -114,6 +114,14 @@ config SPL_BLK_FS
 	  Use generic support to load images from fat/ext filesystems on
 	  different types of block devices such as NVMe.
 
+config SPL_BLK_FS_ESP
+	bool "Load images from the UEFI system parition"
+	depends on SPL_BLK_FS
+	select SPL_PARTITION_TYPE_GUID
+	help
+	  When enabled, first try to boot from the UEFI system partition as
+	  described in the Ch.4 of the EBBR specification.
+
 if EFI_MEDIA
 
 config EFI_MEDIA_SANDBOX

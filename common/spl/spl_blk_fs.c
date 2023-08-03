@@ -9,9 +9,12 @@
 #include <spl.h>
 #include <image.h>
 #include <fs.h>
+#include <part.h>
 
 struct blk_dev {
 	const char *ifname;
+	int devnum;
+	int partnum;
 	char dev_part_str[8];
 };
 
@@ -37,6 +40,44 @@ static ulong spl_fit_read(struct spl_load_info *load, ulong file_offset,
 	}
 
 	return actlen;
+}
+
+int spl_blk_load_file(struct blk_dev *dev, const char *filename,
+		      loff_t *filesize)
+{
+	int ret;
+
+	snprintf(dev->dev_part_str, sizeof(dev->dev_part_str) - 1, "%x:%x",
+		 dev->devnum, dev->partnum);
+	debug("Loading file %s from %s %s\n", filename, dev->ifname,
+	      dev->dev_part_str);
+	ret = fs_set_blk_dev(dev->ifname, dev->dev_part_str, FS_TYPE_ANY);
+	if (ret) {
+		printf("spl: unable to set blk_dev %s %s. Err - %d\n",
+		       dev->ifname, dev->dev_part_str, ret);
+		return ret;
+	}
+
+	ret = fs_size(filename, filesize);
+	if (ret)
+		printf("spl: unable to get size, file: %s. Err - %d\n",
+		       filename, ret);
+	return ret;
+}
+
+int spl_blk_load_from_esp(struct blk_desc *blk_desc, struct blk_dev *dev,
+			  const char *filename, loff_t *size)
+{
+	int part, ret = -ENOENT;
+
+	part = part_get_efi_sys_part(blk_desc);
+	if (part) {
+		debug("Found EFI system partition %d\n", part);
+		dev->partnum = part;
+		ret = spl_blk_load_file(dev, filename, size);
+	}
+
+	return ret;
 }
 
 int spl_blk_load_image(struct spl_image_info *spl_image,
@@ -70,21 +111,22 @@ int spl_blk_load_image(struct spl_image_info *spl_image,
 	}
 
 	dev.ifname = blk_get_uclass_name(uclass_id);
-	snprintf(dev.dev_part_str, sizeof(dev.dev_part_str) - 1, "%x:%x",
-		 devnum, partnum);
-	ret = fs_set_blk_dev(dev.ifname, dev.dev_part_str, FS_TYPE_ANY);
-	if (ret) {
-		printf("spl: unable to set blk_dev %s %s. Err - %d\n",
-		       dev.ifname, dev.dev_part_str, ret);
-		return ret;
+	dev.devnum = devnum;
+	/*
+	 * First try to boot from EFI System partition. In case of failure,
+	 * fall back to the configured partition.
+	 */
+	if (IS_ENABLED(CONFIG_SPL_BLK_FS_ESP)) {
+		ret = spl_blk_load_from_esp(blk_desc, &dev, filename,
+					    &filesize);
+		if (!ret)
+			goto out;
 	}
 
-	ret = fs_size(filename, &filesize);
-	if (ret) {
-		printf("spl: unable to get file size: %s. Err - %d\n",
-		       filename, ret);
+	dev.partnum = partnum;
+	ret = spl_blk_load_file(&dev, filename, &filesize);
+	if (ret)
 		return ret;
-	}
-
+out:
 	return spl_load(spl_image, bootdev, &load, filesize, 0);
 }
