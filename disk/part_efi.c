@@ -255,6 +255,28 @@ void part_print_efi(struct blk_desc *dev_desc)
 	return;
 }
 
+#ifdef CONFIG_SPL_PARTITION_TYPE_GUID
+int part_get_efi_sys_part(struct blk_desc *dev_desc)
+{
+	ALLOC_CACHE_ALIGN_BUFFER_PAD(gpt_header, gpt_head, 1, dev_desc->blksz);
+	gpt_entry *gpt_pte = NULL;
+	int i, num_parts;
+
+	/* This function validates AND fills in the GPT header and PTE */
+	if (find_valid_gpt(dev_desc, gpt_head, &gpt_pte) != 1)
+		return 0;
+
+	num_parts = le32_to_cpu(gpt_head->num_partition_entries);
+	for (i = 0; i < num_parts; i++) {
+		if (!memcmp(&gpt_pte[i].partition_type_guid, &system_guid,
+			    sizeof(efi_guid_t)))
+			break;
+	}
+	free(gpt_pte);
+	return (i == num_parts ? 0 : i + 1);
+}
+#endif
+
 int part_get_info_efi(struct blk_desc *dev_desc, int part,
 		      struct disk_partition *info)
 {

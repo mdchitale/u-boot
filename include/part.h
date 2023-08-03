@@ -578,6 +578,19 @@ int gpt_verify_partitions(struct blk_desc *dev_desc,
  */
 int get_disk_guid(struct blk_desc *dev_desc, char *guid);
 
+#ifdef CONFIG_SPL_PARTITION_TYPE_GUID
+/**
+ * part_get_efi_sys_part() - Function to search for an EFI System partition
+ *
+ * This function searches for an EFI system partition on the block device
+ * whose descriptor is provided.
+ *
+ * @param dev_desc - block device descriptor
+ *
+ * Return: - partition number on success, 0 otherwise
+ */
+int part_get_efi_sys_part(struct blk_desc *dev_desc);
+#endif
 #endif
 
 #if CONFIG_IS_ENABLED(DOS_PARTITION)
