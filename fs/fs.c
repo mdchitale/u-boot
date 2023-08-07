@@ -256,6 +256,7 @@ static struct fstype_info fstypes[] = {
 		.ln = fs_ln_unsupported,
 	},
 #endif
+#ifndef CONFIG_SPL_BUILD
 #ifdef CONFIG_SEMIHOSTING
 	{
 		.fstype = FS_TYPE_SEMIHOSTING,
@@ -274,6 +275,7 @@ static struct fstype_info fstypes[] = {
 		.mkdir = fs_mkdir_unsupported,
 		.ln = fs_ln_unsupported,
 	},
+#endif
 #endif
 #ifndef CONFIG_SPL_BUILD
 #ifdef CONFIG_CMD_UBIFS
