@@ -392,6 +392,14 @@ part_get_info_by_dev_and_name_or_num(const char *dev_iface,
 }
 #endif
 
+/**
+ * part_get_esp() - Find the EFI system partition
+ *
+ * @desc: Block-device descriptor
+ * @Return the EFI system partition, or 0 if there is none
+ */
+int part_get_esp(struct blk_desc *desc);
+
 struct udevice;
 /**
  * disk_blk_read() - read blocks from a disk partition
