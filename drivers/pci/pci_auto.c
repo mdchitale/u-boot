@@ -354,7 +354,7 @@ void dm_pciauto_prescan_setup_bridge(struct udevice *dev, int sub_bus)
 	u8 io_32;
 	struct udevice *ctlr = pci_get_controller(dev);
 	struct pci_controller *ctlr_hose = dev_get_uclass_priv(ctlr);
-	int pcie_off;
+	int pcie_off, pri, sec;
 
 	pci_mem = ctlr_hose->pci_mem;
 	pci_prefetch = ctlr_hose->pci_prefetch;
@@ -367,10 +367,10 @@ void dm_pciauto_prescan_setup_bridge(struct udevice *dev, int sub_bus)
 	io_32 &= PCI_IO_RANGE_TYPE_MASK;
 
 	/* Configure bus number registers */
-	dm_pci_write_config8(dev, PCI_PRIMARY_BUS,
-			     PCI_BUS(dm_pci_get_bdf(dev)) - dev_seq(ctlr));
-	dm_pci_write_config8(dev, PCI_SECONDARY_BUS, sub_bus - dev_seq(ctlr));
-	dm_pci_write_config8(dev, PCI_SUBORDINATE_BUS, 0xff);
+	pri = PCI_BUS(dm_pci_get_bdf(dev)) - dev_seq(ctlr);
+	sec = sub_bus - dev_seq(ctlr);
+	dm_pci_write_config32(dev, PCI_PRIMARY_BUS, (pri | sec << 8 |
+			      0xff0000));
 
 	if (pci_mem) {
 		/* Round memory allocator */
@@ -414,8 +414,8 @@ void dm_pciauto_prescan_setup_bridge(struct udevice *dev, int sub_bus)
 		dm_pci_write_config16(dev, PCI_PREF_MEMORY_LIMIT, 0x0 |
 								prefechable_64);
 		if (prefechable_64 == PCI_PREF_RANGE_TYPE_64) {
-			dm_pci_write_config16(dev, PCI_PREF_BASE_UPPER32, 0x0);
-			dm_pci_write_config16(dev, PCI_PREF_LIMIT_UPPER32, 0x0);
+			dm_pci_write_config32(dev, PCI_PREF_BASE_UPPER32, 0x0);
+			dm_pci_write_config32(dev, PCI_PREF_LIMIT_UPPER32, 0x0);
 		}
 	}
 
