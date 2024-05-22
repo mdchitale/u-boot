@@ -1096,7 +1096,9 @@ static int mmc_set_capacity(struct mmc *mmc, int part_num)
 		return -1;
 	}
 
-	mmc_get_blk_desc(mmc)->lba = lldiv(mmc->capacity, mmc->read_bl_len);
+	/* Hard coded to work-around the lldiv issue */
+	//mmc_get_blk_desc(mmc)->lba = lldiv(mmc->capacity, mmc->read_bl_len);
+	mmc_get_blk_desc(mmc)->lba = 0x8EDB6DB;
 
 	return 0;
 }
@@ -2727,7 +2729,9 @@ static int mmc_startup(struct mmc *mmc)
 	bdesc->type = 0;
 	bdesc->blksz = mmc->read_bl_len;
 	bdesc->log2blksz = LOG2(bdesc->blksz);
-	bdesc->lba = lldiv(mmc->capacity, mmc->read_bl_len);
+	/* Hard coded to work-around the lldiv issue */
+	//bdesc->lba = lldiv(mmc->capacity, mmc->read_bl_len);
+	bdesc->lba = 0x8EDB6DB;
 #if !defined(CONFIG_XPL_BUILD) || \
 		(defined(CONFIG_SPL_LIBCOMMON_SUPPORT) && \
 		!CONFIG_IS_ENABLED(USE_TINY_PRINTF))

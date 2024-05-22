@@ -27,9 +27,27 @@ config TARGET_MICROBLAZE_GENERIC
 	select SPI
 	imply CMD_DM
 
+config TARGET_MICROBLAZE_THUNDERHILL
+	bool "Support microblaze-thunderhill"
+	select DM
+	select MMC
+	select CLK
+	select TIMER
+	select DM_SERIAL
+	select OF_CONTROL
+	select SUPPORT_SPL
+	select SPL_LIBCOMMON_SUPPORT if SPL
+	select SPL_LIBGENERIC_SUPPORT if SPL
+	select SPL_MMC
+	select SPL_DM
+	select SPL_SERIAL
+	select SPL_CLK
+	select SPL_TIMER
+
 endchoice
 
 source "board/xilinx/Kconfig"
 source "board/xilinx/microblaze-generic/Kconfig"
+source "board/xilinx/microblaze-thunderhill/Kconfig"
 
 endmenu

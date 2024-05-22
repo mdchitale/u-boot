@@ -13,7 +13,9 @@
 #include "mmc_private.h"
 #include <log.h>
 #include <reset.h>
+#ifndef CONFIG_MICROBLAZE
 #include <asm/arch/sys_proto.h>
+#endif
 #include <dm/device_compat.h>
 #include <linux/err.h>
 #include <linux/libfdt.h>

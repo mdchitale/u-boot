@@ -12,9 +12,18 @@
 #include <asm/io.h>
 #include <linux/stringify.h>
 
+extern void spl_board_init_rest(void);
+__weak void spl_board_init_rest(void)
+{
+	return;
+}
 void board_boot_order(u32 *spl_boot_list)
 {
+#ifdef CONFIG_TARGET_MICROBLAZE_GENERIC
 	spl_boot_list[0] = BOOT_DEVICE_NOR;
+#else
+	spl_boot_list[0] = BOOT_DEVICE_MMC1;
+#endif
 	spl_boot_list[1] = BOOT_DEVICE_RAM;
 	spl_boot_list[2] = BOOT_DEVICE_SPI;
 }
@@ -24,6 +33,8 @@ void spl_board_init(void)
 {
 	/* enable console uart printing */
 	preloader_console_init();
+
+	spl_board_init_rest();
 }
 
 #ifdef CONFIG_SPL_OS_BOOT

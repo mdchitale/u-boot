@@ -11,5 +11,8 @@
 #define BOOT_DEVICE_RAM		1
 #define BOOT_DEVICE_NOR		2
 #define BOOT_DEVICE_SPI		3
+#define BOOT_DEVICE_MMC1	4
+#define BOOT_DEVICE_MMC2	5
+#define BOOT_DEVICE_MMC2_2	6
 
 #endif
