@@ -14,6 +14,16 @@ config IOMMU
 	  memory if the IOMMU has been programmed to allow access to
 	  that memory.
 
+config SPL_IOMMU
+	bool "Enable Driver Model for IOMMU drivers"
+	depends on SPL_DM
+	help
+	  Enable driver model for IOMMU devices. An IOMMU maps device
+	  virtual memory addresses to physical addresses. Devices
+	  that sit behind an IOMMU can typically only access physical
+	  memory if the IOMMU has been programmed to allow access to
+	  that memory.
+
 config APPLE_DART
 	bool "Apple DART support"
 	depends on IOMMU && ARCH_APPLE
@@ -23,6 +33,24 @@ config APPLE_DART
 	  IOMMU implementation.  The driver performs the necessary
 	  configuration to put the DART into bypass mode such that it can
 	  be used transparently by U-Boot.
+
+config RISCV_IOMMU
+	bool "Risc-V IOMMU support"
+	depends on IOMMU
+	default n
+	help
+	  Enable support for the Risc-V IOMMU. The driver performs the
+	  necessary configuration to put the IOMMU into bare mode such
+	  that it can be used transparently by U-Boot.
+
+config SPL_RISCV_IOMMU
+	bool "Risc-V IOMMU support"
+	depends on SPL_IOMMU
+	default n
+	help
+	  Enable support for the Risc-V IOMMU. The driver performs the
+	  necessary configuration to put the IOMMU into bare mode such
+	  that it can be used transparently by U-Boot.
 
 config QCOM_HYP_SMMU
 	bool "Qualcomm quirky SMMU support"

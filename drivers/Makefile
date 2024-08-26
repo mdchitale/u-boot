@@ -43,6 +43,7 @@ obj-$(CONFIG_$(PHASE_)NVME) += nvme/
 obj-$(CONFIG_XEN) += xen/
 obj-$(CONFIG_$(PHASE_)FPGA) += fpga/
 obj-$(CONFIG_$(PHASE_)VIDEO) += video/
+obj-$(CONFIG_$(XPL_)IOMMU) += iommu/
 
 obj-y += bus/
 
