@@ -143,7 +143,7 @@ static int fit_image_verify_sig(const void *fit, int image_noffset,
 	int verified = 0;
 	int ret;
 
-	/* Process all hash subnodes of the component image node */
+	/* Process all signature subnodes of the component image node */
 	fdt_for_each_subnode(noffset, fit, image_noffset) {
 		const char *name = fit_get_name(fit, noffset, NULL);
 
@@ -157,6 +157,9 @@ static int fit_image_verify_sig(const void *fit, int image_noffset,
 		}
 		if (!strncmp(name, FIT_SIG_NODENAME,
 			     strlen(FIT_SIG_NODENAME))) {
+			printf("\n-- Checking '%s' node ... ",
+			       fdt_get_name(fit, noffset, NULL));
+
 			ret = fit_image_check_sig(fit, noffset, data, size,
 						  key_blob, -1, &err_msg);
 			if (ret) {
@@ -213,6 +216,11 @@ int fit_image_verify_required_sigs(const void *fit, int image_noffset,
 				       NULL);
 		if (!required || strcmp(required, "image"))
 			continue;
+
+		printf("\n-- Check for signature wrt '%s' node "
+		       "[required = \"image\"] ... ",
+		       fdt_get_name(key_blob, noffset, NULL));
+
 		ret = fit_image_verify_sig(fit, image_noffset, data, size,
 					   key_blob, noffset);
 		if (ret) {
@@ -252,12 +260,12 @@ int fit_image_verify_required_sigs(const void *fit, int image_noffset,
  * @conf_noffset: Offset of configuration node (e.g. /configurations/conf-1)
  * @key_blob: Blob containing the keys to check against
  * @required_keynode:	Offset in @key_blob of the required key node,
- *			if any. If this is given, then the configuration wil not
- *			pass verification unless that key is used. If this is
- *			-1 then any signature will do.
+ *			if any. If this is given, then the configuration will
+ *			not pass verification unless that key is used. If this
+ *			is -1, then any signature will do.
  * @err_msgp:		In the event of an error, this will be pointed to a
  *			help error string to display to the user.
- * Return: 0 if all verified ok, <0 on error
+ * Return: 0 if all verified ok, < 0 on error
  */
 static int fit_config_check_sig(const void *fit, int noffset, int conf_noffset,
 				const void *key_blob, int required_keynode,
@@ -424,12 +432,14 @@ static int fit_config_verify_key(const void *fit, int conf_noffset,
 	int verified = 0;
 	int ret;
 
-	/* Process all hash subnodes of the component conf node */
+	/* Process all signature subnodes of the component conf node */
 	fdt_for_each_subnode(noffset, fit, conf_noffset) {
 		const char *name = fit_get_name(fit, noffset, NULL);
 
 		if (!strncmp(name, FIT_SIG_NODENAME,
 			     strlen(FIT_SIG_NODENAME))) {
+			printf("\n** Checking '%s' node ... ", name);
+
 			ret = fit_config_check_sig(fit, noffset, conf_noffset,
 						   key_blob, key_offset,
 						   &err_msg);
@@ -452,7 +462,7 @@ static int fit_config_verify_key(const void *fit, int conf_noffset,
 		return 0;
 
 error:
-	printf(" error!\n%s for '%s' hash node in '%s' config node\n",
+	printf(" error!\n%s for '%s' signature node in '%s' config node\n",
 	       err_msg, fit_get_name(fit, noffset, NULL),
 	       fit_get_name(fit, conf_noffset, NULL));
 	return -EPERM;
@@ -529,6 +539,10 @@ static int fit_config_verify_required_keys(const void *fit, int conf_noffset,
 			continue;
 
 		reqd_sigs++;
+
+		printf("\n-- Check for signature wrt '%s' node "
+		       "[required = \"conf\"] ... ",
+		       fdt_get_name(key_blob, noffset, NULL));
 
 		ret = fit_config_verify_key(fit, conf_noffset, key_blob,
 					    noffset);

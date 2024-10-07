@@ -1355,7 +1355,7 @@ int fit_image_verify_with_data(const void *fit, int image_noffset,
 		goto error;
 	}
 
-	/* Process all hash subnodes of the component image node */
+	/* Process all hash & signature subnodes of the component image node */
 	fdt_for_each_subnode(noffset, fit, image_noffset) {
 		const char *name = fit_get_name(fit, noffset, NULL);
 
@@ -1363,6 +1363,12 @@ int fit_image_verify_with_data(const void *fit, int image_noffset,
 		 * Check subnode name, must be equal to "hash".
 		 * Multiple hash nodes require unique unit node
 		 * names, e.g. hash-1, hash-2, etc.
+		 *
+		 * When key did not enforce required signature at the top
+		 * (the call to fit_image_verify_required_sigs() above),
+		 * Check subnode name must be equal to "signature".
+		 * Multiple signature nodes require unique unit node names,
+		 * e.g. signature-1, signature-2, etc.
 		 */
 		if (!strncmp(name, FIT_HASH_NODENAME,
 			     strlen(FIT_HASH_NODENAME))) {

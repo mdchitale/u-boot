@@ -317,12 +317,12 @@ static int load_simple_fit(struct spl_load_info *info, ulong fit_offset,
 	}
 
 	if (CONFIG_IS_ENABLED(FIT_SIGNATURE)) {
-		printf("## Checking hash(es) for Image %s ... ",
-		       fit_get_name(fit, node, NULL));
+		printf("## Checking signature(s) and/or hash(es) for "
+		       "Image '%s' ... ", fit_get_name(fit, node, NULL));
 		if (!fit_image_verify_with_data(fit, node, gd_fdt_blob(), src,
 						length))
 			return -EPERM;
-		puts("OK\n");
+		puts("===> OK\n");
 	}
 
 	if (CONFIG_IS_ENABLED(FIT_IMAGE_POST_PROCESS))
@@ -719,11 +719,11 @@ static int spl_simple_fit_parse(struct spl_fit_info *ctx)
 		return -EINVAL;
 
 	if (IS_ENABLED(CONFIG_SPL_FIT_SIGNATURE)) {
-		printf("## Checking hash(es) for config %s ... ",
+		printf("## Checking signature(s) for config '%s' ... ",
 		       fit_get_name(ctx->fit, ctx->conf_node, NULL));
 		if (fit_config_verify(ctx->fit, ctx->conf_node))
 			return -EPERM;
-		puts("OK\n");
+		puts("==========> OK\n");
 	}
 
 	/* find the node holding the images information */
