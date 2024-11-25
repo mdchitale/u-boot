@@ -4,6 +4,10 @@
  */
 
 #include <dm.h>
+#include <dm/uclass.h>
+#include <dm/device.h>
+#include <dm/uclass-internal.h>
+#include <dm/device-internal.h>
 #include <dm/ofnode.h>
 #include <env.h>
 #include <fdtdec.h>
@@ -95,6 +99,20 @@ void board_boot_order(u32 *spl_boot_list)
 	spl_boot_list[1] = BOOT_DEVICE_MMC1;
 	spl_boot_list[2] = BOOT_DEVICE_NVME;
 	spl_boot_list[3] = BOOT_DEVICE_NONE;
+}
+
+void spl_board_prepare_for_boot(void)
+{
+	struct udevice *dev;
+	int rc;
+
+	rc = uclass_find_device(UCLASS_IOMMU, 0, &dev);
+	if (!rc && dev) {
+		rc = device_remove(dev, DM_REMOVE_NORMAL);
+		if (rc)
+			printf("Cannot remove IOMMU device '%s' (err=%d)\n",
+			       dev->name, rc);
+	}
 }
 #endif
 
