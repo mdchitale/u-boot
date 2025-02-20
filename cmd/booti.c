@@ -131,7 +131,10 @@ int do_booti(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
 
 	images.os.os = IH_OS_LINUX;
 	if (IS_ENABLED(CONFIG_RISCV_SMODE))
-		images.os.arch = IH_ARCH_RISCV;
+		if (IS_ENABLED(CONFIG_64BIT))
+			images.os.arch = IH_ARCH_RISCV64;
+		else
+			images.os.arch = IH_ARCH_RISCV;
 	else if (IS_ENABLED(CONFIG_ARM64))
 		images.os.arch = IH_ARCH_ARM64;
 
