@@ -17,8 +17,44 @@
 #include <init.h>
 #include <virtio_types.h>
 #include <virtio.h>
-
+#define RV_ETRACE_PARAM_MAX_LEN	64
 DECLARE_GLOBAL_DATA_PTR;
+
+int rv_etrace_parse_params(const char *params[RV_ETRACE_PARAM_MAX_LEN],
+		     bool show_params);
+static const char *itrace_params_qemu[RV_ETRACE_PARAM_MAX_LEN] = {
+	".packet.srcid_bytes_p,0",
+	".packet.tstamp_bytes_p,0",
+	".packet.type_width_p,0",
+	".itrace.arch_p,0",
+	".itrace.blocks_p,0",
+	".itrace.bpred_size_p,5",
+	".itrace.cache_size_p,0",
+	".itrace.call_counter_size_p,1",
+	".itrace.ctype_width_p,0",
+	".itrace.context_width_p,0",
+	".itrace.time_width_p,0",
+	".itrace.ecause_width_p,6",
+	".itrace.f0s_width_p,1",
+	".itrace.filter_context_p,0",
+	".itrace.filter_time_p,0",
+	".itrace.filter_excint_p,0",
+	".itrace.filter_privilege_p,0",
+	".itrace.filter_tval_p,0",
+	".itrace.iaddress_lsb_p,0",
+	".itrace.iaddress_width_p,64",
+	".itrace.iretire_width_p,0",
+	".itrace.ilastsize_width_p,1",
+	".itrace.itype_width_p,0",
+	".itrace.nocontext_p,1",
+	".itrace.notime_p,1",
+	".itrace.privilege_width_p,3",
+	".itrace.retires_p,1",
+	".itrace.return_stack_size_p,1",
+	".itrace.sijump_p,0",
+	".itrace.impdef_width_p,0",
+	"",
+};
 
 #if IS_ENABLED(CONFIG_MTD_NOR_FLASH)
 int is_flash_available(void)
@@ -52,6 +88,12 @@ int board_late_init(void)
 	if (!ofnode_valid(chosen_node)) {
 		debug("No chosen node found, can't get kernel start address\n");
 		return 0;
+	}
+
+	if (CONFIG_IS_ENABLED(CMD_VMSTRACE)) {
+		if (rv_etrace_parse_params(itrace_params_qemu, false)) {
+			printf("Parsing e-trace params failed.\n");
+		}
 	}
 
 #ifdef CONFIG_ARCH_RV64I
