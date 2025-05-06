@@ -7,6 +7,7 @@
 #include <cpu_func.h>
 #include <dm.h>
 #include <asm/insn-def.h>
+#include <asm/barrier.h>
 #include <linux/const.h>
 #include <linux/errno.h>
 
@@ -92,6 +93,7 @@ __weak void flush_dcache_all(void)
 __weak void flush_dcache_range(unsigned long start, unsigned long end)
 {
 	cbo_flush(start, end);
+	mb();
 }
 
 __weak void invalidate_icache_range(unsigned long start, unsigned long end)
@@ -106,6 +108,7 @@ __weak void invalidate_icache_range(unsigned long start, unsigned long end)
 __weak void invalidate_dcache_range(unsigned long start, unsigned long end)
 {
 	cbo_inval(start, end);
+	mb();
 }
 
 void cache_flush(void)
