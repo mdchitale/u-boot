@@ -18,24 +18,49 @@
 #define RV_ITRACE_FORMAT_BITS		2
 #define RV_ITRACE_SUBFORMAT_BITS	2
 
-/** Itrace format=1 data */
-struct rv_itrace_format1 {
-	unsigned int branches;		/** 5 bits -- number of valid bits in branch_map */
-	unsigned int branch_map;	/** Branch map (31 bits) */
-	unsigned long long address;	/** Address (calculated from iaddress_width_p and iaddress_lsb_p) */
-	unsigned int notify;		/** Notify flag (1  bit)  */
-	unsigned int updiscon;		/** Up Disconnect flag (1  bit) */
+struct rv_itrace_iaddress {
+	unsigned long long addr; /** Address (calculated from iaddress_width_p and iaddress_lsb_p) */
+	unsigned int notify;   /**  Notify flag (1  bit)  */
+	unsigned int updiscon; /**  Up Disconnect flag (1  bit) */
+	unsigned int irreport; /**  Instruction Report flag (1  bit) */
+	unsigned int irdepth;  /**  IR Depth (calculated dynamically)  */
+};
+
+/** Itrace format=0 and subfromat 1  */
+struct rv_itrace_format01 {
+	unsigned int index;	/** cache_size_p */
+	unsigned int branches;   /** 5 bits -- number of valid bits in branch_map */
+	unsigned int branch_map; /** Branch map (31 bits) */
 	unsigned int irreport;		/** Instruction Report flag (1  bit) */
 	unsigned int irdepth;		/** IR Depth (calculated dynamically)  */
 };
 
+/** Itrace format=0 and subfromat 0  address, branch map*/
+struct rv_itrace_format00 {
+	unsigned int branch_count;	/** 32 bit */
+	unsigned int branch_fmt;	/**2bit -- 00 for no address */
+	struct rv_itrace_iaddress iaddress;
+};
+
+struct rv_itrace_format0 {
+	unsigned int subformat;
+	union {
+		struct rv_itrace_format00 format00;
+		struct rv_itrace_format01 format01;
+	};
+};
+
+
+/** Itrace format=1 data */
+struct rv_itrace_format1 {
+	unsigned int branches;		/** 5 bits -- number of valid bits in branch_map */
+	unsigned int branch_map;	/** Branch map (31 bits) */
+	struct rv_itrace_iaddress iaddress;
+};
+
 /** Itrace format=2 data */
 struct rv_itrace_format2 {
-	unsigned long long address;	/** Address (calculated from iaddress_width_p and iaddress_lsb_p) */
-	unsigned int notify;		/** Notify flag (1  bit)  */
-	unsigned int updiscon;		/** Up Disconnect flag (1  bit) */
-	unsigned int irreport;		/** Instruction Report flag (1  bit) */
-	unsigned int irdepth;		/** IR Depth (calculated dynamically)  */
+	struct rv_itrace_iaddress iaddress;
 };
 
 /** Itrace format=3 sub-format=2 data */
@@ -93,6 +118,7 @@ struct rv_itrace_format3 {
 struct rv_itrace_data {
 	unsigned int format;		/* Format field */
 	union {
+		struct rv_itrace_format0 format0;
 		struct rv_itrace_format1 format1;
 		struct rv_itrace_format2 format2;
 		struct rv_itrace_format3 format3;

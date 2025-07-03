@@ -8,7 +8,8 @@
  *
  * [1] https://github.com/riscv-non-isa/riscv-trace-spec
  */
-
+#include <stdio.h>
+#include <string.h>
 #include <rv_etrace_bits.h>
 #include <rv_etrace_params.h>
 #include <rv_etrace_itrace.h>
@@ -24,7 +25,9 @@ static inline unsigned int calculate_irdepth(unsigned int return_stack_size_p,
 static int rv_branch_map_valid_bits(unsigned int branches)
 {
 	/** Define the branch limits in terms of valid bits */
-	if (branches <= 1)
+	if (branches == 0)
+		return 0;
+	else if (branches == 1)
 		return 1;
 	else if (branches <= 3)
 		return 3;
@@ -36,6 +39,232 @@ static int rv_branch_map_valid_bits(unsigned int branches)
 		return 31;
 	else /* For cases where the branch number exceeds 31 */
 		return 31;
+}
+
+static void rv_itrace_pkt_decomp(const struct rv_etrace_payload *payload)
+{
+	unsigned int msb, i;
+
+	msb = rv_etrace_read_bits(payload->data, payload->size * 8 - 1, 1);
+	for (i = payload->size; i < RV_ETRACE_PAYLOAD_MAX_BYTES; i++)
+		if (msb)
+			memset((void *)&payload->data[i], 0xff, 1);
+		else
+			memset((void *)&payload->data[i], 0x0, 1);
+}
+
+static void rv_itrace_read_iaddress(const struct rv_etrace_params *params,
+					    const struct rv_etrace_payload *payload,
+					    struct rv_itrace_iaddress *iaddr,
+					    unsigned int bit_pos)
+{
+	unsigned int bit_len, payload_bits = payload->size * 8;
+	unsigned int addr_msb;
+
+	bit_len = params->itrace.iaddress_width_p - params->itrace.iaddress_lsb_p;
+	if (bit_pos + bit_len >= payload_bits)
+		rv_itrace_pkt_decomp(payload);
+
+	iaddr->addr = rv_etrace_read_bits_ll(payload->data, bit_pos, bit_len);
+	addr_msb = iaddr->addr >> (bit_len - 1);
+	bit_pos += bit_len;
+	iaddr->addr = iaddr->addr << params->itrace.iaddress_lsb_p;
+
+	if (bit_pos + 1 < payload_bits) {
+		iaddr->notify = rv_etrace_read_bits(payload->data, bit_pos, 1) ^ addr_msb;
+		bit_pos += 1;
+	} else
+		iaddr->notify = 0;
+
+	if (bit_pos + 1 < payload_bits) {
+		iaddr->updiscon = rv_etrace_read_bits(payload->data, bit_pos, 1) ^ addr_msb;
+		bit_pos += 1;
+	} else
+		iaddr->updiscon = 0;
+
+	if (bit_pos + 1 < payload_bits) {
+		iaddr->irreport = rv_etrace_read_bits(payload->data, bit_pos, 1) ^ addr_msb;
+		bit_pos += 1;
+	} else
+		iaddr->irreport = 0;
+	
+	if (iaddr->irreport) {
+		bit_len = calculate_irdepth(params->itrace.return_stack_size_p,
+				       	    params->itrace.call_counter_size_p);
+		iaddr->irdepth = rv_etrace_read_bits(payload->data, bit_pos, bit_len);
+		bit_pos += bit_len;
+	}
+}
+
+/** Function to get number of bits required by itrace format=0  subformat =0  */
+static unsigned int rv_itrace_format00_bits(const struct rv_etrace_params *params,
+						const struct rv_itrace_data *it)
+{
+	unsigned int ret = 32;
+	ret += 2;
+	if (it->format0.format00.branch_fmt == 0)
+		return ret;
+	ret += params->itrace.iaddress_width_p - params->itrace.iaddress_lsb_p;
+	ret += 3;
+	ret += calculate_irdepth(params->itrace.return_stack_size_p,
+				 params->itrace.call_counter_size_p);
+	return ret;
+}
+
+/** Function to decode itrace format=0  subformat =0  from payload */
+static int rv_itrace_format00_read(const struct rv_etrace_params *params,
+				   const struct rv_etrace_payload *payload,
+				   unsigned int bit_pos,
+				   struct rv_itrace_format00 *fmt0)
+{
+	unsigned int bit_len = 32, payload_bits = payload->size * 8;
+
+	if (bit_pos + bit_len >= payload_bits)
+		bit_len = payload_bits - bit_pos;
+	fmt0->branch_count = rv_etrace_read_bits(payload->data, bit_pos,
+					       bit_len);
+	bit_pos += bit_len;
+	bit_len =  2;
+	if (bit_pos + bit_len >= payload_bits)
+		fmt0->branch_fmt = 0;
+	else
+		fmt0->branch_fmt = rv_etrace_read_bits(payload->data, bit_pos,
+						       bit_len);
+	if (fmt0->branch_fmt == 0)
+		return 0;
+
+	bit_pos += bit_len;
+	rv_itrace_read_iaddress(params, payload, &fmt0->iaddress, bit_pos);
+
+	return 0;
+}
+
+/** Function to encode itrace format=0  subformat =0  into payload */
+static int rv_itrace_format00_write(const struct rv_etrace_params *params,
+				    struct rv_etrace_payload *payload,
+				    unsigned int bit_pos,
+				    const struct rv_itrace_format00 *fmt0)
+{
+	unsigned int bit_len = 32;
+	rv_etrace_write_bits(payload->data, bit_pos,
+			     bit_len,
+			     fmt0->branch_count);
+	bit_pos += bit_len;
+	bit_len = 2;
+	if (fmt0->branch_fmt == 0)
+		return 0;
+	rv_etrace_write_bits(payload->data, bit_pos,
+			     bit_len,
+			     fmt0->branch_fmt);
+	bit_pos += bit_len;
+
+	bit_len = params->itrace.iaddress_width_p - params->itrace.iaddress_lsb_p;
+	rv_etrace_write_bits_ll(payload->data, bit_pos, bit_len,
+				fmt0->iaddress.addr >> params->itrace.iaddress_lsb_p);
+	bit_pos += bit_len;
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt0->iaddress.notify);
+	bit_pos += 1;
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt0->iaddress.updiscon);
+	bit_pos += 1;
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt0->iaddress.irreport);
+	bit_pos += 1;
+	bit_len = calculate_irdepth(params->itrace.return_stack_size_p,
+				    params->itrace.call_counter_size_p);
+	rv_etrace_write_bits(payload->data, bit_pos, bit_len, fmt0->iaddress.irdepth);
+	bit_pos += bit_len;
+	return 0;
+}
+
+/** Function to get number of bits required by itrace format=0 subformat = 1  */
+static unsigned int rv_itrace_format01_bits(const struct rv_etrace_params *params,
+						const struct rv_itrace_data *it)
+{
+	unsigned int ret = params->itrace.cache_size_p ;
+	ret += 5;
+	ret += rv_branch_map_valid_bits(it->format0.format01.branches);
+	if (it->format0.format01.branches == 31)
+		return ret;
+	ret += 1;
+	ret += calculate_irdepth(params->itrace.return_stack_size_p,
+				params->itrace.call_counter_size_p);
+	return ret;
+}
+
+/** Function to decode itrace fformat=0 subformat = 1 from payload */
+static int rv_itrace_format01_read(const struct rv_etrace_params *params,
+				   const struct rv_etrace_payload *payload,
+				   unsigned int bit_pos,
+				   struct rv_itrace_format01 *fmt01)
+{
+	unsigned int bit_len = params->itrace.cache_size_p, prev_msb;
+	unsigned int payload_bits = payload->size * 8;
+
+	fmt01->index = rv_etrace_read_bits(payload->data, bit_pos,
+					       bit_len);
+	bit_pos += bit_len;
+	bit_len = 5;
+	fmt01->branches = rv_etrace_read_bits(payload->data, bit_pos,
+					       bit_len);
+	bit_pos += bit_len;
+	bit_len = rv_branch_map_valid_bits(fmt01->branches);
+	if (bit_len) {
+		if (bit_pos + bit_len >= payload_bits)
+			rv_itrace_pkt_decomp(payload);
+		fmt01->branch_map = rv_etrace_read_bits(payload->data, bit_pos, bit_len);
+		bit_pos += bit_len;
+		prev_msb = fmt01->branch_map >> (bit_len - 1);
+	} else
+		prev_msb = fmt01->branches >> 4;
+
+	if (bit_pos + 1 < payload_bits) {
+		fmt01->irreport = rv_etrace_read_bits(payload->data, bit_pos, 1);
+		bit_pos += 1;
+	} else
+		fmt01->irreport = prev_msb;
+	
+	fmt01->irreport = prev_msb ^ fmt01->irreport;
+	if (fmt01->irreport) {
+		bit_len = calculate_irdepth(params->itrace.return_stack_size_p,
+					    params->itrace.call_counter_size_p);
+		fmt01->irdepth = rv_etrace_read_bits(payload->data, bit_pos, bit_len);
+		bit_pos += bit_len;
+	}
+	return 0;
+}
+
+/** Function to encode itrace format0 into payload */
+static int rv_itrace_format01_write(const struct rv_etrace_params *params,
+				    struct rv_etrace_payload *payload,
+				    unsigned int bit_pos,
+				    const struct rv_itrace_format01 *fmt01)
+{
+	unsigned int bit_len = params->itrace.cache_size_p ;
+
+	rv_etrace_write_bits(payload->data, bit_pos,
+			     bit_len,
+			     fmt01->index);
+	bit_pos += bit_len;
+	bit_len = 5;
+	rv_etrace_write_bits(payload->data, bit_pos,
+			     bit_len,
+			     fmt01->branches);
+	bit_pos += bit_len;
+	bit_len = rv_branch_map_valid_bits(fmt01->branches);
+	rv_etrace_write_bits(payload->data, bit_pos,
+			     bit_len,
+			     fmt01->branch_map);
+	bit_pos += bit_len;
+	if (fmt01->branches == 31)
+		return 0;
+
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt01->irreport);
+	bit_pos += 1;
+
+	bit_len = calculate_irdepth(params->itrace.return_stack_size_p,
+				    params->itrace.call_counter_size_p);
+	rv_etrace_write_bits(payload->data, bit_pos, bit_len, fmt01->irdepth);
+	bit_pos += bit_len;
+	return 0;
 }
 
 /** Function to get number of bits required by itrace format=1  */
@@ -67,28 +296,15 @@ static int rv_itrace_format1_read(const struct rv_etrace_params *params,
 	bit_pos += 5;
 
 	bit_len = rv_branch_map_valid_bits(fmt1->branches);
-	fmt1->branch_map = rv_etrace_read_bits(payload->data, bit_pos, bit_len);
-	bit_pos += bit_len;
+	if (!bit_len)
+		bit_len = 31;
 
+	fmt1->branch_map = rv_etrace_read_bits(payload->data, bit_pos, bit_len);
 	if (bit_len == 31)
 		return 0;
 
-	bit_len = params->itrace.iaddress_width_p - params->itrace.iaddress_lsb_p;
-	fmt1->address = rv_etrace_read_bits_ll(payload->data, bit_pos, bit_len);
-	fmt1->address = fmt1->address << params->itrace.iaddress_lsb_p;
 	bit_pos += bit_len;
-
-	fmt1->notify = rv_etrace_read_bits(payload->data, bit_pos, 1);
-	bit_pos += 1;
-	fmt1->updiscon = rv_etrace_read_bits(payload->data, bit_pos, 1);
-	bit_pos += 1;
-	fmt1->irreport = rv_etrace_read_bits(payload->data, bit_pos, 1);
-	bit_pos += 1;
-
-	bit_len = calculate_irdepth(params->itrace.return_stack_size_p,
-				    params->itrace.call_counter_size_p);
-	fmt1->irdepth = rv_etrace_read_bits(payload->data, bit_pos, bit_len);
-	bit_pos += bit_len;
+	rv_itrace_read_iaddress(params, payload, &fmt1->iaddress, bit_pos);
 
 	return 0;
 }
@@ -114,19 +330,19 @@ static int rv_itrace_format1_write(const struct rv_etrace_params *params,
 
 	bit_len = params->itrace.iaddress_width_p - params->itrace.iaddress_lsb_p;
 	rv_etrace_write_bits_ll(payload->data, bit_pos, bit_len,
-				fmt1->address >> params->itrace.iaddress_lsb_p);
+				fmt1->iaddress.addr >> params->itrace.iaddress_lsb_p);
 	bit_pos += bit_len;
 
-	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt1->notify);
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt1->iaddress.notify);
 	bit_pos += 1;
-	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt1->updiscon);
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt1->iaddress.updiscon);
 	bit_pos += 1;
-	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt1->irreport);
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt1->iaddress.irreport);
 	bit_pos += 1;
 
 	bit_len = calculate_irdepth(params->itrace.return_stack_size_p,
 				    params->itrace.call_counter_size_p);
-	rv_etrace_write_bits(payload->data, bit_pos, bit_len, fmt1->irdepth);
+	rv_etrace_write_bits(payload->data, bit_pos, bit_len, fmt1->iaddress.irdepth);
 	bit_pos += bit_len;
 	return 0;
 }
@@ -149,25 +365,7 @@ static int rv_itrace_format2_read(const struct rv_etrace_params *params,
 				   unsigned int bit_pos,
 				   struct rv_itrace_format2 *fmt2)
 {
-	unsigned int bit_len = 0;
-
-	bit_len = params->itrace.iaddress_width_p - params->itrace.iaddress_lsb_p;
-	fmt2->address = rv_etrace_read_bits_ll(payload->data, bit_pos, bit_len);
-	fmt2->address = fmt2->address << params->itrace.iaddress_lsb_p;
-	bit_pos += bit_len;
-
-	fmt2->notify = rv_etrace_read_bits(payload->data, bit_pos, 1);
-	bit_pos += 1;
-	fmt2->updiscon = rv_etrace_read_bits(payload->data, bit_pos, 1);
-	bit_pos += 1;
-	fmt2->irreport = rv_etrace_read_bits(payload->data, bit_pos, 1);
-	bit_pos += 1;
-
-	bit_len = calculate_irdepth(params->itrace.return_stack_size_p,
-				       params->itrace.call_counter_size_p);
-	fmt2->irdepth = rv_etrace_read_bits(payload->data, bit_pos, bit_len);
-	bit_pos += bit_len;
-
+	rv_itrace_read_iaddress(params, payload, &fmt2->iaddress, bit_pos);
 	return 0;
 }
 
@@ -181,19 +379,19 @@ static int rv_itrace_format2_write(const struct rv_etrace_params *params,
 
 	bit_len = params->itrace.iaddress_width_p - params->itrace.iaddress_lsb_p;
 	rv_etrace_write_bits_ll(payload->data, bit_pos, bit_len,
-				fmt2->address >> params->itrace.iaddress_lsb_p);
+				fmt2->iaddress.addr >> params->itrace.iaddress_lsb_p);
 	bit_pos += bit_len;
 
-	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt2->notify);
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt2->iaddress.notify);
 	bit_pos += 1;
-	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt2->updiscon);
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt2->iaddress.updiscon);
 	bit_pos += 1;
-	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt2->irreport);
+	rv_etrace_write_bits(payload->data, bit_pos, 1, fmt2->iaddress.irreport);
 	bit_pos += 1;
 
 	bit_len = calculate_irdepth(params->itrace.return_stack_size_p,
 				    params->itrace.call_counter_size_p);
-	rv_etrace_write_bits(payload->data, bit_pos, bit_len, fmt2->irdepth);
+	rv_etrace_write_bits(payload->data, bit_pos, bit_len, fmt2->iaddress.irdepth);
 	bit_pos += bit_len;
 
 	return 0;
@@ -202,15 +400,9 @@ static int rv_itrace_format2_write(const struct rv_etrace_params *params,
 /** Function to get number of bits required by itrace format=3 sub-format=3 */
 static unsigned int rv_itrace_format33_bits(const struct rv_etrace_params *params)
 {
-	unsigned int ret = 1;
-
-	ret += 32; /** N bits: Encoder mode (assuming 32bits ) */
-	ret += 2;
-	ret += 32;  /** N bits: Instruction options (assuming 32 bits ) */
-	ret += 1;
-	ret += 1;
-	ret += 32;  /** M bits: Data options (assuming 32 bits ) */
-
+	unsigned int ret = 1; /* ienable */
+	ret += 2; /* qual_stat */
+	ret += 4; /* ioptions */
 	return ret;
 }
 
@@ -223,23 +415,11 @@ static int rv_itrace_format33_read(const struct rv_etrace_params *params,
 	fmt33->ienable = rv_etrace_read_bits(payload->data, bit_pos, 1);
 	bit_pos += 1;
 
-	fmt33->encoder_mode = rv_etrace_read_bits(payload->data, bit_pos, 32);
-	bit_pos += 32;
-
 	fmt33->qual_status = rv_etrace_read_bits(payload->data, bit_pos, 2);
 	bit_pos += 2;
 
 	fmt33->ioptions = rv_etrace_read_bits(payload->data, bit_pos, 32);
-	bit_pos += 32;
-
-	fmt33->denable = rv_etrace_read_bits(payload->data, bit_pos, 1);
-	bit_pos += 1;
-
-	fmt33->dloss = rv_etrace_read_bits(payload->data, bit_pos, 1);
-	bit_pos += 1;
-
-	fmt33->doptions = rv_etrace_read_bits(payload->data, bit_pos, 32);
-	bit_pos += 32;
+	bit_pos += 4;
 
 	return 0;
 }
@@ -359,8 +539,7 @@ static unsigned int rv_itrace_format31_bits(const struct rv_etrace_params *param
 
 	ret += 2;
 	ret += params->itrace.iaddress_width_p - params->itrace.iaddress_lsb_p;
-	if (!fmt31->interrupt)
-		ret += params->itrace.iaddress_width_p;
+	ret += params->itrace.iaddress_width_p;
 	return ret;
 }
 
@@ -488,7 +667,7 @@ static int rv_itrace_format30_read(const struct rv_etrace_params *params,
 				   unsigned int bit_pos,
 				   struct rv_itrace_format30 *fmt30)
 {
-	unsigned long bit_len = 0;
+	unsigned long bit_len = 0, payload_bits = payload->size * 8;
 
 	fmt30->branch = rv_etrace_read_bits(payload->data, bit_pos, 1);
 	bit_pos += 1;
@@ -510,6 +689,9 @@ static int rv_itrace_format30_read(const struct rv_etrace_params *params,
 	}
 
 	bit_len = params->itrace.iaddress_width_p - params->itrace.iaddress_lsb_p;
+	if (bit_pos + bit_len >= payload_bits)
+		rv_itrace_pkt_decomp(payload);
+
 	fmt30->address = rv_etrace_read_bits_ll(payload->data, bit_pos, bit_len);
 	fmt30->address = fmt30->address << params->itrace.iaddress_lsb_p;
 	bit_pos += bit_len;
@@ -556,10 +738,24 @@ unsigned int rv_itrace_payload_bits(const struct rv_etrace_params *params,
 				    const struct rv_itrace_data *it)
 {
 	unsigned ret = params->packet.type_width_p;
+	int f0s_width_p = params->itrace.f0s_width_p;
 
 	ret += RV_ITRACE_FORMAT_BITS;
 
 	switch (it->format) {
+	case 0:
+		ret += f0s_width_p;
+		switch (it->format0.subformat) {
+		case 0:
+			ret +=  rv_itrace_format00_bits(params, it);
+			break;
+		case 1:
+			ret +=  rv_itrace_format01_bits(params, it);
+			break;
+		default:
+			break;
+		}
+		break;
 	case 1:
 		ret += rv_itrace_format1_bits(params, it);
 		break;
@@ -596,20 +792,38 @@ int rv_itrace_payload_read(const struct rv_etrace_params *params,
 			   const struct rv_etrace_payload *payload,
 			   struct rv_itrace_data *it)
 {
-	unsigned int size, bit_pos;
+	int f0s_width_p = params->itrace.f0s_width_p;
+	unsigned int bit_pos;
 	int rc;
 
 	if (rv_etrace_payload_type_read(params, payload) !=
 	    RV_ETRACE_PAYLOAD_TYPE_ITRACE)
 		return -1;
-	bit_pos = params->packet.type_width_p;
 
+	bit_pos = params->packet.type_width_p;
 	it->format = rv_etrace_read_bits(payload->data, bit_pos,
 					 RV_ITRACE_FORMAT_BITS);
 	bit_pos += RV_ITRACE_FORMAT_BITS;
 
 	rc = -1;
 	switch (it->format) {
+	case 0:
+		it->format0.subformat = rv_etrace_read_bits(payload->data, bit_pos,
+							    f0s_width_p);
+		bit_pos += f0s_width_p;
+		switch (it->format0.subformat) {
+		case 0:
+			rc = rv_itrace_format00_read(params, payload, bit_pos,
+						&it->format0.format00);
+			break;
+		case 1:
+			rc = rv_itrace_format01_read(params, payload, bit_pos,
+						&it->format0.format01);
+			break;
+		default:
+			break;
+		}
+		break;
 	case 1:
 		rc = rv_itrace_format1_read(params, payload, bit_pos, &it->format1);
 		break;
@@ -646,10 +860,6 @@ int rv_itrace_payload_read(const struct rv_etrace_params *params,
 		break;
 	}
 
-	size = (rv_itrace_payload_bits(params, it) + 7) >> 3;
-	if (size > payload->size)
-		return -1;
-
 	return rc;
 }
 
@@ -673,6 +883,24 @@ int rv_itrace_payload_write(const struct rv_etrace_params *params,
 
 	rc = -1;
 	switch (it->format) {
+	case 0:
+		rv_etrace_write_bits(payload->data, bit_pos,
+				     RV_ITRACE_SUBFORMAT_BITS,
+				     it->format0.subformat);
+		bit_pos += RV_ITRACE_SUBFORMAT_BITS;
+		switch (it->format0.subformat) {
+		case 0:
+			rc = rv_itrace_format00_write(params, payload, bit_pos,
+						&it->format0.format00);
+			break;
+		case 1:
+			rc = rv_itrace_format01_write(params, payload, bit_pos,
+						&it->format0.format01);
+			break;
+		default:
+			break;
+		}
+		break;
 	case 1:
 		rc = rv_itrace_format1_write(params, payload, bit_pos, &it->format1);
 		break;
