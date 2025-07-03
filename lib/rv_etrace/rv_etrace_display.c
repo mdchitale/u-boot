@@ -308,33 +308,34 @@ int rv_etrace_pktdump(const unsigned char *packet_stream, size_t packet_stream_s
 			in_pkt  = &conc_pkt;
 		}
 
-		printf("%016lx: packet%08d:", pos, in_pkt_num);
 		rc = rv_etrace_packet_payload_read(&params_g, in_pkt, &in_pld);
+		printf("packet%08d:%08lx:header:%x:packet_size:%d\n",in_pkt_num,
+			pos, in_pkt->header, in_pkt_size);
 		if (rc < 0) {
-			pos++;
-			if (pos >= end && wrap) {
-				pos -= end;
-				end = pos_orig;
-				wrap = 0;
-			}
-			continue;
+			printf("error: failed to read packet payload %d\n", rc);
+			goto skip_pkt;
 		}
 
 		switch (rv_etrace_payload_type_read(&params_g, &in_pld)) {
 		case RV_ETRACE_PAYLOAD_TYPE_ITRACE:
-			rc = rv_itrace_payload_read(&params_g, &in_pld, &in_it);
+			rc = rv_itrace_payload_read(&params_g, &in_pld, &in_it,
+						    itrace_feat);
 			if (rc) {
 				printf(" error: failed to read itrace data (error %d)\n", rc);
-				pos++;
-				if (pos >= end && wrap) {
-					pos -= end;
-					end = pos_orig;
-					wrap = 0;
-				}
-				continue;
+				goto skip_pkt;
 			}
 
 			switch (in_it.format) {
+			case 0:
+				switch (in_it.format0.subformat) {
+				case 0:
+					display_itrace_format00(in_pkt_num, &in_it);
+					break;
+				case 1:
+					display_itrace_format01(in_pkt_num, &in_it);
+					break;
+				}
+				break;
 			case 1:
 				display_itrace_format1(in_pkt_num, &in_it);
 				break;
@@ -358,40 +359,22 @@ int rv_etrace_pktdump(const unsigned char *packet_stream, size_t packet_stream_s
 				default:
 					printf(" error: unknown itrace format3 subformat %d\n",
 						in_it.format3.subformat);
-					pos++;
-					if (pos >= end && wrap) {
-						pos -= end;
-						end = pos_orig;
-						wrap = 0;
-					}
-					continue;
+					goto skip_pkt;
 				}
 				break;
 			default:
 				printf(" error: unknown itrace format %d\n", in_it.format);
-				pos++;
-				if (pos >= end && wrap) {
-					pos -= end;
-					end = pos_orig;
-					wrap = 0;
-				}
-				continue;
+				goto skip_pkt;
 			}
 			break;
 		case RV_ETRACE_PAYLOAD_TYPE_DTRACE:
 		case RV_ETRACE_PAYLOAD_TYPE_UNKNOWN:
 			printf(" error: unknown packet type\n");
-			pos++;
-			if (pos >= end && wrap) {
-				pos -= end;
-				end = pos_orig;
-				wrap = 0;
-			}
-			continue;
+			goto skip_pkt;
 		}
 
 		printf("\n");
-
+skip_pkt:
 		pos += in_pkt_size;
 		if (pos >= end && wrap) {
 			pos -= end;
