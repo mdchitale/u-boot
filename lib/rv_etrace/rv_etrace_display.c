@@ -174,6 +174,40 @@ int rv_etrace_parse_params(const char *itrace_params[MAX_LINE_LENGTH],
 	return 0;
 }
 
+static void display_itrace_format00(unsigned int in_pkt_num,
+				   const struct rv_itrace_data *it)
+{
+	const struct rv_itrace_format00 *data = &it->format0.format00;
+
+	printf(" format0 subformat 0");
+	printf(" branch_count=%d", data->branch_count);
+	printf(" branch_fmt=0x%x", data->branch_fmt);
+	if (data->branch_fmt == 0)
+		return;
+	printf(" address=0x%llx", data->iaddress.addr);
+	printf(" notify=%u", data->iaddress.notify);
+	printf(" updiscon=%u", data->iaddress.updiscon);
+	printf(" irreport=%u", data->iaddress.irreport);
+	if (data->iaddress.irreport)
+		printf(" irdepth=0x%x", data->iaddress.irdepth);
+}
+
+static void display_itrace_format01(unsigned int in_pkt_num,
+				   const struct rv_itrace_data *it)
+{
+	const struct rv_itrace_format01 *data = &it->format0.format01;
+
+	printf(" format0 subformat 1");
+	printf(" index=%d", data->index);
+	printf(" branches=%d", data->branches);
+	if (data->branches == 0)
+		return;
+	printf(" branch_map=0x%x", data->branch_map);
+	printf(" irreport=%u", data->irreport);
+	if (data->irreport)
+		printf(" irdepth=0x%x", data->irdepth);
+}
+
 static void display_itrace_format1(unsigned int in_pkt_num,
 				   const struct rv_itrace_data *it)
 {
@@ -184,11 +218,12 @@ static void display_itrace_format1(unsigned int in_pkt_num,
 	printf(" branche_map=0x%x", data->branch_map);
 	if (data->branches == 31)
 		return;
-	printf(" address=0x%llx", data->address);
-	printf(" notify=%u", data->notify);
-	printf(" updiscon=%u", data->updiscon);
-	printf(" irreport=%u", data->irreport);
-	printf(" irdepth=0x%x", data->irdepth);
+	printf(" address=0x%llx", data->iaddress.addr);
+	printf(" notify=%u", data->iaddress.notify);
+	printf(" updiscon=%u", data->iaddress.updiscon);
+	printf(" irreport=%u", data->iaddress.irreport);
+	if (data->iaddress.irreport)
+		printf(" irdepth=0x%x", data->iaddress.irdepth);
 }
 
 static void display_itrace_format2(unsigned int in_pkt_num,
@@ -197,11 +232,12 @@ static void display_itrace_format2(unsigned int in_pkt_num,
 	const struct rv_itrace_format2 *data = &it->format2;
 
 	printf(" format2");
-	printf(" address=0x%llx", data->address);
-	printf(" notify=%u", data->notify);
-	printf(" updiscon=%u", data->updiscon);
-	printf(" irreport=%u", data->irreport);
-	printf(" irdepth=0x%x", data->irdepth);
+	printf(" address=0x%llx", data->iaddress.addr);
+	printf(" notify=%u", data->iaddress.notify);
+	printf(" updiscon=%u", data->iaddress.updiscon);
+	printf(" irreport=%u", data->iaddress.irreport);
+	if (data->iaddress.irreport)
+		printf(" irdepth=0x%x", data->iaddress.irdepth);
 }
 
 static void display_itrace_format33(unsigned int in_pkt_num,
@@ -211,12 +247,8 @@ static void display_itrace_format33(unsigned int in_pkt_num,
 
 	printf(" format3 subformat3");
 	printf(" ienable=%u", data->ienable);
-	printf(" encoder_mode=0x%x", data->encoder_mode);
 	printf(" qual_status=0x%x", data->qual_status);
 	printf(" ioptions=0x%x", data->ioptions);
-	printf(" denable=%u", data->denable);
-	printf(" dloss=%u", data->dloss);
-	printf(" doptions=0x%x", data->doptions);
 }
 
 static void display_itrace_format32(unsigned int in_pkt_num,
@@ -308,6 +340,7 @@ int rv_etrace_pktdump(const unsigned char *packet_stream, size_t packet_stream_s
 			in_pkt  = &conc_pkt;
 		}
 
+		memset((void *)&in_pld, 0, sizeof(in_pld));
 		rc = rv_etrace_packet_payload_read(&params_g, in_pkt, &in_pld);
 		printf("packet%08d:%08lx:header:%x:packet_size:%d\n",in_pkt_num,
 			pos, in_pkt->header, in_pkt_size);
@@ -318,8 +351,7 @@ int rv_etrace_pktdump(const unsigned char *packet_stream, size_t packet_stream_s
 
 		switch (rv_etrace_payload_type_read(&params_g, &in_pld)) {
 		case RV_ETRACE_PAYLOAD_TYPE_ITRACE:
-			rc = rv_itrace_payload_read(&params_g, &in_pld, &in_it,
-						    itrace_feat);
+			rc = rv_itrace_payload_read(&params_g, &in_pld, &in_it);
 			if (rc) {
 				printf(" error: failed to read itrace data (error %d)\n", rc);
 				goto skip_pkt;
