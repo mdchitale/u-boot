@@ -342,7 +342,7 @@ int rv_etrace_pktdump(const unsigned char *packet_stream, size_t packet_stream_s
 
 		memset((void *)&in_pld, 0, sizeof(in_pld));
 		rc = rv_etrace_packet_payload_read(&params_g, in_pkt, &in_pld);
-		printf("packet%08d:%08lx:header:%x:packet_size:%d\n",in_pkt_num,
+		printf("packet%08d:%08lx:header:%x:packet_size:%d	",in_pkt_num,
 			pos, in_pkt->header, in_pkt_size);
 		if (rc < 0) {
 			printf("error: failed to read packet payload %d\n", rc);
