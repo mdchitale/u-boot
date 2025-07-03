@@ -182,11 +182,8 @@ static int do_vmstrace_setup(struct cmd_tbl *cmdtp, int flag, int argc,
 	ret = vmstrace_wait_bit((void *)(v2_ram_sink_base_g +
 				RV_ETRACE_TRRAM_CONTROL_OFF),
 				RV_ETRACE_TRRAM_ENABLE, 1, 10000);
-	if (ret) {
-		printf("Failed to set ttram_ctrl enable to\n");
-		/* Fall through for now */
-		//return 0;
-	}
+	if (ret)
+		return 0;
 		
 	trte_ctrl |= (0x6 << RV_ETRACE_TRTE_INSTMODE);
 	writel(trte_ctrl, v2_enc_base_g + RV_ETRACE_TRTE_CTRL_OFF);
